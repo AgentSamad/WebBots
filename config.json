@@ -1,0 +1,12 @@
+{
+  "_comment": "Rename this file to config.json and fill in your SMTP details to enable email crash alerts",
+  "email": {
+    "enabled": false,
+    "host": "smtp.gmail.com",
+    "port": 587,
+    "user": "your-email@gmail.com",
+    "pass": "your-app-password",
+    "from": "Boom Arena Bot <your-email@gmail.com>",
+    "to": "dev.haziqhere@gmail.com"
+  }
+}

@@ -1,0 +1,584 @@
+<title>Boom Arena Monitor</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<style>
+/* ── design tokens ─────────────────────────────────────────── */
+/* Layout: single-column with sticky header; card grid below   */
+:root {
+  --bg:        #0d0f14;
+  --bg-card:   #161923;
+  --bg-hover:  #1d2130;
+  --border:    rgba(255,255,255,0.07);
+  --fg:        #e8ecf5;
+  --fg-muted:  #7b88a6;
+  --accent:    #5b6ef5;      /* blue-violet */
+  --ok:        #3ecf6e;
+  --warn:      #f0a443;
+  --danger:    #f05252;
+  --tag-bg:    rgba(91,110,245,0.12);
+
+  --font-ui:   'Space Grotesk', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+
+  color-scheme: dark;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg:        #f0f2f8;
+    --bg-card:   #ffffff;
+    --bg-hover:  #e8ebf5;
+    --border:    rgba(0,0,0,0.08);
+    --fg:        #1a1f35;
+    --fg-muted:  #6b7899;
+    --accent:    #4457e8;
+    --tag-bg:    rgba(68,87,232,0.09);
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg:        #f0f2f8;
+  --bg-card:   #ffffff;
+  --bg-hover:  #e8ebf5;
+  --border:    rgba(0,0,0,0.08);
+  --fg:        #1a1f35;
+  --fg-muted:  #6b7899;
+  --accent:    #4457e8;
+  --tag-bg:    rgba(68,87,232,0.09);
+  color-scheme: light;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; }
+
+body {
+  font-family: var(--font-ui);
+  background: var(--bg);
+  color: var(--fg);
+  min-height: 100%;
+  padding-left:  max(16px, env(safe-area-inset-left,  0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0;
+}
+
+/* ── layout ───────────────────────────────────────────────── */
+header {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 10;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding-block: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-left:  max(16px, env(safe-area-inset-left,  0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  margin-left:  calc(-1 * max(16px, env(safe-area-inset-left,  0px)));
+  margin-right: calc(-1 * max(16px, env(safe-area-inset-right, 0px)));
+}
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto;
+  height: env(safe-area-inset-top, 0px);
+  z-index: 11;
+  background: var(--bg);
+}
+
+.logo { display: flex; align-items: center; gap: 10px; }
+.logo-bomb {
+  width: 32px; height: 32px;
+  background: var(--accent);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+  box-shadow: 0 0 16px rgba(91,110,245,0.4);
+}
+.logo-title { font-size: 15px; font-weight: 700; letter-spacing: -.3px; }
+.logo-sub   { font-size: 11px; color: var(--fg-muted); font-weight: 400; }
+header .spacer { flex: 1; }
+
+.refresh-btn {
+  background: var(--tag-bg);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background .15s;
+}
+.refresh-btn:hover { background: var(--bg-hover); }
+
+main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding-block: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* ── stat tiles ───────────────────────────────────────────── */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+}
+.tile {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px 20px;
+}
+.tile-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  margin-bottom: 8px;
+}
+.tile-value {
+  font-size: 26px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.tile-sub { font-size: 12px; color: var(--fg-muted); margin-top: 4px; }
+.ok     { color: var(--ok);     }
+.warn   { color: var(--warn);   }
+.danger { color: var(--danger); }
+
+/* ── section heading ──────────────────────────────────────── */
+.section-head {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 13px; font-weight: 600;
+  color: var(--fg-muted);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.section-head::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ── run table ────────────────────────────────────────────── */
+.runs-table {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+table { width: 100%; border-collapse: collapse; }
+thead th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+tbody tr { transition: background .1s; }
+tbody tr:hover { background: var(--bg-hover); }
+tbody td {
+  padding: 11px 16px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+tbody tr:last-child td { border-bottom: none; }
+.status-pill {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.pill-completed { background: rgba(62,207,110,.12); color: var(--ok); }
+.pill-crashed   { background: rgba(240,82,82,.12);  color: var(--danger); }
+.pill-error     { background: rgba(240,82,82,.12);  color: var(--danger); }
+.pill-load_failed { background: rgba(240,164,67,.12); color: var(--warn); }
+.pill-running   { background: var(--tag-bg); color: var(--accent); }
+
+.mono { font-family: var(--font-mono); font-size: 12px; }
+.duration { color: var(--fg-muted); }
+
+/* ── error log ────────────────────────────────────────────── */
+.error-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.error-panel-head {
+  padding: 12px 16px;
+  font-size: 12px; font-weight: 600;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px;
+  color: var(--fg-muted);
+}
+.error-entry {
+  padding: 10px 16px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  border-bottom: 1px solid var(--border);
+  word-break: break-all;
+  color: var(--danger);
+}
+.error-entry:last-child { border-bottom: none; }
+.error-entry .err-time { color: var(--fg-muted); margin-right: 8px; }
+.error-entry .err-type {
+  display: inline-block;
+  padding: 1px 6px; border-radius: 3px;
+  background: rgba(240,82,82,.12);
+  margin-right: 6px;
+  font-size: 10px;
+}
+.no-errors { padding: 24px 16px; text-align: center; color: var(--ok); font-size: 13px; }
+
+/* ── log viewer ───────────────────────────────────────────── */
+.log-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.log-scroll {
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 12px 16px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--fg-muted);
+}
+.log-line-time  { color: var(--accent); margin-right: 6px; }
+.log-line-err   { color: var(--danger); }
+.log-line-ok    { color: var(--ok); }
+
+/* ── empty state ──────────────────────────────────────────── */
+.empty {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--fg-muted);
+  font-size: 14px;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+}
+.empty-icon { font-size: 36px; opacity: .5; }
+
+/* ── test results ─────────────────────────────────────────── */
+.test-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+.test-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex; gap: 10px; align-items: flex-start;
+}
+.test-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+.test-name { font-size: 12px; font-weight: 500; line-height: 1.4; }
+.test-dur  { font-size: 11px; color: var(--fg-muted); margin-top: 2px; }
+.test-pass { border-left: 3px solid var(--ok); }
+.test-fail { border-left: 3px solid var(--danger); }
+.test-skip { border-left: 3px solid var(--fg-muted); }
+
+/* ── responsive ───────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .tiles { grid-template-columns: 1fr 1fr; }
+  thead th:nth-child(4), tbody td:nth-child(4) { display: none; }
+}
+</style>
+
+<!-- ── markup ─────────────────────────────────────────────── -->
+
+<header>
+  <div class="logo">
+    <div class="logo-bomb">💣</div>
+    <div>
+      <div class="logo-title">Boom Arena Monitor</div>
+      <div class="logo-sub">Daily bot &amp; crash tracker</div>
+    </div>
+  </div>
+  <div class="spacer"></div>
+  <button class="refresh-btn" onclick="loadAll()">↻ Refresh</button>
+</header>
+
+<main>
+  <!-- stat tiles -->
+  <div class="tiles" id="tiles">
+    <div class="tile"><div class="tile-label">Last Status</div><div class="tile-value" id="t-status">—</div></div>
+    <div class="tile"><div class="tile-label">Total Runs</div><div class="tile-value" id="t-runs">—</div></div>
+    <div class="tile"><div class="tile-label">Errors Today</div><div class="tile-value" id="t-errors">—</div></div>
+    <div class="tile"><div class="tile-label">Last Run</div><div class="tile-value" style="font-size:16px;padding-top:4px" id="t-last">—</div><div class="tile-sub" id="t-last-sub"></div></div>
+  </div>
+
+  <!-- test results -->
+  <div>
+    <div class="section-head">Test Suite Results</div>
+    <div id="test-grid" class="test-grid"></div>
+  </div>
+
+  <!-- run history -->
+  <div>
+    <div class="section-head">Bot Run History</div>
+    <div class="runs-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Status</th>
+            <th>Errors</th>
+            <th>Play Duration</th>
+            <th>Canvas OK?</th>
+          </tr>
+        </thead>
+        <tbody id="runs-body">
+          <tr><td colspan="5"><div class="empty"><div class="empty-icon">🔄</div>Loading…</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- latest errors -->
+  <div>
+    <div class="section-head">Latest Errors</div>
+    <div class="error-panel" id="error-panel">
+      <div class="no-errors">Loading…</div>
+    </div>
+  </div>
+
+  <!-- multi-user runs -->
+  <div>
+    <div class="section-head">100-User Simulation Runs</div>
+    <div id="multi-panel"></div>
+  </div>
+
+  <!-- scheduler log -->
+  <div>
+    <div class="section-head">Scheduler Log</div>
+    <div class="log-box">
+      <div class="log-scroll" id="log-scroll">
+        <div style="color:var(--fg-muted);font-size:12px">Loading…</div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+const BASE = '';   // same origin as Express server
+
+function fmt(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  return d.toLocaleString(undefined, { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+function dur(ms) {
+  if (!ms) return '—';
+  const s = Math.round(ms / 1000);
+  return s < 60 ? `${s}s` : `${Math.floor(s/60)}m ${s%60}s`;
+}
+function pillClass(status) {
+  return `status-pill pill-${status}`;
+}
+function relative(ts) {
+  if (!ts) return '';
+  const diff = Date.now() - new Date(ts).getTime();
+  const h = Math.floor(diff / 3600000);
+  if (h < 1) return `${Math.floor(diff/60000)}m ago`;
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h/24)}d ago`;
+}
+
+async function loadRuns() {
+  try {
+    const runs = await fetch(`${BASE}/api/runs`).then(r => r.json());
+    const tbody = document.getElementById('runs-body');
+
+    // tiles
+    const latest = runs[0];
+    if (latest) {
+      const sv = document.getElementById('t-status');
+      sv.textContent = latest.status;
+      sv.className = `tile-value ${latest.status === 'completed' ? 'ok' : latest.status === 'running' ? '' : 'danger'}`;
+
+      document.getElementById('t-runs').textContent   = runs.length;
+      document.getElementById('t-last').textContent   = fmt(latest.timestamp);
+      document.getElementById('t-last-sub').textContent = relative(latest.timestamp);
+
+      const todayErrors = runs
+        .filter(r => new Date(r.timestamp).toDateString() === new Date().toDateString())
+        .reduce((a, r) => a + (r.errors?.length || 0), 0);
+      const te = document.getElementById('t-errors');
+      te.textContent = todayErrors;
+      te.className   = `tile-value ${todayErrors === 0 ? 'ok' : 'danger'}`;
+    }
+
+    if (!runs.length) {
+      tbody.innerHTML = `<tr><td colspan="5"><div class="empty"><div class="empty-icon">🤖</div>No runs yet — start the bot with <code>npm run bot</code></div></td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = runs.slice(0, 50).map(r => {
+      const canvasOk = r.canvasHealthChecks?.every(c => c.alive) ?? null;
+      const canvasTxt = canvasOk === null ? '—' : canvasOk ? '<span class="ok">✓</span>' : '<span class="danger">✗</span>';
+      return `<tr>
+        <td class="mono">${fmt(r.timestamp)}</td>
+        <td><span class="${pillClass(r.status)}">${r.status}</span></td>
+        <td class="${r.errors?.length ? 'danger' : 'ok'}">${r.errors?.length ?? 0}</td>
+        <td class="duration">${dur(r.playDurationMs)}</td>
+        <td>${canvasTxt}</td>
+      </tr>`;
+    }).join('');
+
+    // error panel
+    const allErrors = runs.flatMap(r =>
+      (r.errors || []).map(e => ({ ...e, runId: r.id, runTime: r.timestamp }))
+    ).slice(0, 30);
+    const ep = document.getElementById('error-panel');
+    if (!allErrors.length) {
+      ep.innerHTML = `<div class="no-errors">✓ No errors recorded across all runs</div>`;
+    } else {
+      ep.innerHTML =
+        `<div class="error-panel-head">⚠ ${allErrors.length} error(s) across all runs</div>` +
+        allErrors.map(e =>
+          `<div class="error-entry">
+            <span class="err-time">${fmt(e.at || e.runTime)}</span>
+            <span class="err-type">${e.type}</span>
+            ${escHtml(e.text?.slice(0, 180) ?? '')}
+          </div>`
+        ).join('');
+    }
+  } catch (err) {
+    console.error('loadRuns:', err);
+  }
+}
+
+async function loadTests() {
+  try {
+    const data = await fetch(`${BASE}/api/tests`).then(r => r.json());
+    const grid = document.getElementById('test-grid');
+    const suites = data?.suites ?? [];
+    const specs  = suites.flatMap(s => s.specs ?? []);
+
+    if (!specs.length) {
+      grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">🧪</div>No test results yet — run <code>npm test</code></div>`;
+      return;
+    }
+
+    grid.innerHTML = specs.map(sp => {
+      const passed = sp.tests?.every(t => t.results?.every(r => r.status === 'passed'));
+      const failed = sp.tests?.some(t  => t.results?.some(r  => r.status === 'failed'));
+      const ms     = sp.tests?.[0]?.results?.[0]?.duration ?? 0;
+      const cls    = passed ? 'test-pass' : failed ? 'test-fail' : 'test-skip';
+      const icon   = passed ? '✓' : failed ? '✗' : '·';
+      const col    = passed ? 'ok' : failed ? 'danger' : '';
+      return `<div class="test-card ${cls}">
+        <div class="test-icon ${col}">${icon}</div>
+        <div>
+          <div class="test-name">${escHtml(sp.title ?? '')}</div>
+          <div class="test-dur">${ms > 0 ? dur(ms) : ''}</div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch {
+    document.getElementById('test-grid').innerHTML =
+      `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">🧪</div>Run <code>npm test</code> to see results</div>`;
+  }
+}
+
+async function loadLog() {
+  try {
+    const { lines } = await fetch(`${BASE}/api/scheduler-log`).then(r => r.json());
+    const box = document.getElementById('log-scroll');
+    if (!lines?.length) {
+      box.innerHTML = `<div style="color:var(--fg-muted)">No scheduler log yet. Start with <code>npm start</code></div>`;
+      return;
+    }
+    box.innerHTML = lines.map(l => {
+      const isErr = /error|fail|crash/i.test(l);
+      const isOk  = /complete|pass|ok/i.test(l);
+      const cls   = isErr ? 'log-line-err' : isOk ? 'log-line-ok' : '';
+      const m     = l.match(/^\[(.+?)\]\s*(.*)/);
+      if (m) return `<div class="${cls}"><span class="log-line-time">${m[1]}</span>${escHtml(m[2])}</div>`;
+      return `<div class="${cls}">${escHtml(l)}</div>`;
+    }).join('');
+  } catch {}
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/* ── multi-user panel ─────────────────────────────────── */
+async function loadMultiRuns() {
+  try {
+    const runs = await fetch(`${BASE}/api/multi-runs`).then(r => r.json());
+    const panel = document.getElementById('multi-panel');
+    if (!runs.length) {
+      panel.innerHTML = `<div class="empty"><div class="empty-icon">👥</div>No multi-user runs yet — start with <code>npm run multi</code></div>`;
+      return;
+    }
+    const r = runs[0];  // most recent
+    const bar = pct => `<div style="display:flex;gap:3px;align-items:center;flex-wrap:wrap">
+      ${Array.from({length: r.totalUsers}, (_, i) => {
+        const u = r.userResults?.[i];
+        const col = !u ? '#555' : u.status === 'completed' ? 'var(--ok)' : u.status === 'load_failed' ? 'var(--warn)' : 'var(--danger)';
+        const tip = u ? `${u.userName} · ${u.status} · ${u.errors} err` : '…';
+        return `<div title="${escHtml(tip)}" style="width:10px;height:10px;border-radius:2px;background:${col};cursor:default"></div>`;
+      }).join('')}
+    </div>`;
+
+    panel.innerHTML = `
+      <div class="runs-table" style="margin-bottom:12px">
+        <table>
+          <thead><tr><th>Run</th><th>Users</th><th>✓ OK</th><th>✗ Fail</th><th>Errors</th><th>Avg Play</th><th>Rate</th></tr></thead>
+          <tbody>
+            ${runs.slice(0, 10).map(r => `<tr>
+              <td class="mono">${fmt(r.startedAt)}</td>
+              <td>${r.totalUsers}</td>
+              <td class="ok">${r.completed}</td>
+              <td class="${r.crashed + r.loadFailed + r.errored > 0 ? 'danger' : 'ok'}">${r.crashed + r.loadFailed + r.errored}</td>
+              <td class="${r.totalErrors > 0 ? 'warn' : 'ok'}">${r.totalErrors}</td>
+              <td class="duration">${dur(r.avgPlayMs)}</td>
+              <td class="${parseFloat(r.successRate) >= 90 ? 'ok' : 'warn'}">${r.successRate}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div style="margin-bottom:6px;font-size:11px;color:var(--fg-muted);font-weight:600;letter-spacing:.06em;text-transform:uppercase">Latest run — user grid (hover for details)</div>
+      ${bar(r)}
+      ${r.topErrors?.length ? `
+        <div style="margin-top:16px">
+          <div style="font-size:11px;color:var(--fg-muted);font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">Top errors across all users</div>
+          ${r.topErrors.slice(0,8).map(e => `
+            <div style="display:flex;gap:10px;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
+              <span style="color:var(--danger);font-weight:700;min-width:30px;font-variant-numeric:tabular-nums">×${e.count}</span>
+              <span style="color:var(--fg-muted);font-family:var(--font-mono)">${escHtml(e.msg.slice(0,100))}</span>
+            </div>`).join('')}
+        </div>` : ''}`;
+  } catch { document.getElementById('multi-panel').innerHTML = `<div class="empty"><div class="empty-icon">👥</div>Run <code>npm run multi</code> to start a 100-user test</div>`; }
+}
+
+function loadAll() { loadRuns(); loadTests(); loadLog(); loadMultiRuns(); }
+
+loadAll();
+setInterval(loadAll, 30_000);  // auto-refresh every 30 s
+</script>

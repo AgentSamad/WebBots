@@ -1,0 +1,15 @@
+# Proxy list — one per line. Bots rotate through these for different IPs.
+#
+# Supported formats:
+#   http://host:port
+#   http://username:password@host:port
+#   socks5://host:port
+#   socks5://username:password@host:port
+#
+# Example (replace with your real proxies):
+# http://103.149.162.195:80
+# http://user1:pass1@proxy.provider.com:8080
+# socks5://user2:pass2@proxy.provider.com:1080
+#
+# Leave this file empty (or with only comments) to run without proxies.
+# Recommended providers: Bright Data, Oxylabs, Smartproxy, IPRoyal
