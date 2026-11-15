@@ -28,7 +28,7 @@ const args      = process.argv.slice(2);
 const getArg    = (flag, def) => { const i = args.indexOf(flag); return i !== -1 && args[i+1] ? Number(args[i+1]) : def; };
 const hasFlag   = flag => args.includes(flag);
 
-const USER_COUNT    = getArg('--users',    50);
+const USER_COUNT    = getArg('--users',   100);
 const BATCH_SIZE    = getArg('--batch',     5);
 const MAX_ROUNDS    = getArg('--rounds',    0);   // 0 = loop forever
 const SKIP_IP       = hasFlag('--no-ip-change');
@@ -109,9 +109,11 @@ async function runBatch(batch, proxies, roundNum, batchNum, totalBatches) {
 
   const results = await Promise.allSettled(batch.map((profile, pi) => {
     const globalIndex = (batchNum - 1) * BATCH_SIZE + pi;
-    // Users in the second half of the run are forced as first-time visitors
-    const halfPoint  = Math.ceil(USER_COUNT / 2);
-    const forceNew   = profile.id > halfPoint;
+    // Mobile users 41-50 are forced new (~20% of mobile = "some new")
+    // Mobile users 1-40 and all PC users 51-100 keep saved profiles (returning)
+    const MOBILE_NEW_START = 41;
+    const MOBILE_COUNT     = 50;
+    const forceNew   = profile.id >= MOBILE_NEW_START && profile.id <= MOBILE_COUNT;
     const profileName = forceNew ? `${profile.name}_new` : profile.name;
     const profileDir = path.join(__dirname, 'user-profiles', profileName);
     const isReturn   = !forceNew && fs.existsSync(profileDir);
@@ -185,11 +187,11 @@ async function main() {
 
   console.log(`\n${'='.repeat(64)}`);
   console.log(` Boom Arena — Multi-User Bot with IP Rotation`);
-  console.log(`  Users:      ${USER_COUNT}`);
+  console.log(`  Users:      ${USER_COUNT} (1-50 mobile, 51-100 PC)`);
+  console.log(`  Returning:  users 1-40 mobile + 51-100 PC | New: users 41-50 mobile`);
   console.log(`  Batch size: ${BATCH_SIZE} bots at a time`);
   console.log(`  IP change:  ${SKIP_IP ? 'disabled (--no-ip-change)' : 'after every batch'}`);
   console.log(`  Play time:  ${MIN_PLAY_MIN}–${MAX_PLAY_MIN} min random`);
-  console.log(`  Order:      reverse (User 100 → 1)`);
   console.log(`  Proxies:    ${proxies.length > 0 ? proxies.length + ' loaded' : 'none'}`);
   console.log(`  Rounds:     ${MAX_ROUNDS === 0 ? '∞ (loop forever)' : MAX_ROUNDS}`);
   console.log(`${'='.repeat(64)}\n`);

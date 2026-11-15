@@ -100,11 +100,13 @@ function pick(arr, rand) {
 function generateProfiles(count = 100) {
   return Array.from({ length: count }, (_, i) => {
     const rand      = seededRandom(i * 31337 + 7);
-    const isMobile  = true;  // all users are mobile for this run
+    const id        = i + 1;
+    // Users 1-50 are mobile (landscape viewport, desktop UA to avoid CrazyGames redirect)
+    // Users 51-100 are PC/desktop (wider viewport, desktop UA)
+    const isMobile  = id <= 50;
     const viewport  = isMobile ? MOBILE_VIEWPORTS[i % MOBILE_VIEWPORTS.length] : VIEWPORTS[i % VIEWPORTS.length];
     const timezone  = TIMEZONES[i % TIMEZONES.length];
     const locale    = LOCALES[i % LOCALES.length];
-    // Mobile users keep landscape viewport but use desktop UA — prevents CrazyGames mobile redirect
     const ua        = USER_AGENTS[i % USER_AGENTS.length];
     const style     = PLAY_STYLES[i % PLAY_STYLES.length];
     // First visit: 15–25 min. Return visits: 7–9 min (quick session, returning player).
@@ -115,8 +117,8 @@ function generateProfiles(count = 100) {
     const hardwareConcurrency = pick([2, 4, 6, 8, 12, 16], rand);
 
     return {
-      id:       i + 1,
-      name:     `User_${String(i + 1).padStart(3, '0')}`,
+      id,
+      name:     `User_${String(id).padStart(3, '0')}`,
       isMobile,
       viewport,
       timezone,
